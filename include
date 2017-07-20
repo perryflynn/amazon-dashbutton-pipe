@@ -1,0 +1,81 @@
+#!/bin/bash
+
+PIPE=/tmp/ulogdash.fifo
+DIRGLOB=by-*
+MACDIR=by-mac
+IDDIR=by-id
+NAMEDIR=by-name
+LOCKDIR=lock
+LOG=log/press.log
+OUTLOG=log/lastpress-%s.log
+COUNTERFILE=log/counter-%s.txt
+
+function logecho()
+{
+    echo "[$(date)] $1" | tee -a "$LOG"
+}
+
+function get_pressctr()
+{
+    echo -n "$(printf "$COUNTERFILE" "$1")"
+}
+
+function countpress()
+{
+    TEMP=$(get_pressctr "$1")
+    C=0
+    if [ -f "$TEMP" ]; then
+        C=$(cat "$TEMP")
+    fi
+    C=$(($C+1))
+    echo -n $C > "$TEMP"
+}
+
+function get_idlog()
+{
+    echo -n "$(printf "$OUTLOG" "$1")"
+}
+
+function clear_idlog()
+{
+    cat /dev/null > "$(get_idlog "$1")"
+}
+
+function get_id()
+{
+    echo -n $(basename "$(find -L $DIRGLOB -samefile "$MACDIR/$1" | grep "$IDDIR/")")
+}
+
+function get_name()
+{
+    echo -n $(basename "$(find -L $DIRGLOB -samefile "$MACDIR/$1" | grep "$NAMEDIR/")")
+}
+
+function get_lockfile()
+{
+    if [ ! -d "$LOCKDIR" ]; then
+        mkdir -p "$LOCKDIR"
+    fi
+
+    echo -n "$LOCKDIR/${1}.lock"
+}
+
+function lock()
+{
+    TEMP=$(get_lockfile "$1")
+    if [ -f "$TEMP" ]; then
+        return 1
+    else
+        date > "$TEMP"
+        return 0
+    fi
+}
+
+function unlock()
+{
+    TEMP=$(get_lockfile "$1")
+    if [ -f "$TEMP" ]; then
+        rm "$TEMP"
+    fi
+}
+
