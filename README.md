@@ -1,5 +1,12 @@
 Execute custom shell script with Amazon Dash Buttons.
 
+## Script overview
+
+- `dashinfo.sh`: Show MAC, ID and name of all dash buttons
+- `dashpipe.sh`: Main script for execute the scripts
+- `include`: Functions for all scripts
+- `saferun.sh`: Wrapper to execute the scripts and prevent concurrent execution
+
 ## Prepare dash buttons
 
 - Use the amazon app to setup the buttons into your Wifi network
