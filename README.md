@@ -1,26 +1,38 @@
 Execute custom shell script with Amazon Dash Buttons.
 
+## Workflow
+
+- Press Amazon Dash Button
+- Capture DHCP DISCOVER packet in iptables and redirect to ulogd / fifi pipe
+- Read the pipe and execute the matching shell scripts by dash buttons MAC address
+
 ## Script overview
 
 - `dashinfo.sh`: Show MAC, ID and name of all dash buttons
 - `dashpipe.sh`: Main script for execute the scripts
 - `include`: Functions for all scripts
 - `saferun.sh`: Wrapper to execute the scripts and prevent concurrent execution
+- `by-*`: Folders for script mapping, see the README files inside
 
 ## Prepare dash buttons
 
 - Use the amazon app to setup the buttons into your Wifi network
 - **Do not** assign any product to the dash button
 - Capture with wireshark the MAC address of the button (or take a look into your router)
-- **Bonus 1:** Create a firewall rule to block traffic for the dash button
-- **Bonus 2:** Use DNAT to redirect all traffic to your fake HTTPS webserver (much smaller red-blinking-time)
-- **Bonus 3:** Delete the dash button from your amazon app (only possible after bonus 1+2)
+
+**For professional environments:**
+
+- Create a firewall rule to block traffic for the dash button
+- Use DNAT to redirect all traffic to your fake HTTPS webserver (much smaller red-blinking-time)
+- Delete the dash button from your amazon app (only possible after block dash button traffic)
 
 ## Installation
 
 This script uses iptables and ulogd to capture DHCP DISCOVER packets from a amazon dash button.
 
 Ulogd write its log entries into a FIFO pipe. `dashpipe.sh` extracts the MAC address from that log entry and executes the matching shell scripts. See the README.md file in the `by-*` folders for more infos.
+
+**Install ulogd and create fifo:**
 
 ```
 apt-get install ulogd
@@ -64,7 +76,7 @@ Replace the MAC addresses with yours.
 
 Just start `dashpipe.sh` and see what happening on button press.
 
-## Full iptables setup
+## Full iptables setup (professional environment)
 
 I have running a special router VM for IoT stuff. The VM is configured as default gateway
 in my DHCP server and filters all traffic in my IoT subnet.
@@ -73,11 +85,11 @@ You need a second subnet to route between IoT and local network / internet.
 
 **Please do not use this if you dont unterstand it!**
 
-What the ruleset does:
+What this custom iptables ruleset does:
 
 - Allow traffic on one single MAC for setup in amazon app
 - Block all amazon dash button traffic
-- Redirect HTTPS and NTP traffic to local services to short the red-blinking-time
+- Redirect HTTPS and NTP traffic to local services (install services first!) to short the red-blinking-time
 - Fire the DHCPDISCOVER log for ulogd / dashpipe.sh
 
 ```
@@ -85,7 +97,7 @@ What the ruleset does:
 
 # Restore with iptables-restore < rulesfile
 
-# You must enable ip forwarding:
+# You must enable ip forwarding with sysctl:
 # net.ipv4.ip_forward=1
 
 *filter
@@ -96,6 +108,7 @@ What the ruleset does:
 # Server Access
 # Allow access to local fake services by dash buttons
 # You must modify this rules if your dont have a second lan interface
+# eth1 = IoT Subnet; eth0 = trusted subnet
 -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 -A INPUT -i lo -j ACCEPT
 -A INPUT -i eth0 -j ACCEPT
@@ -108,11 +121,11 @@ What the ruleset does:
 -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 # 001
-# obsolete rule for first setup
+# obsolete rule, for first setup only
 #-A FORWARD -m mac --mac-source ac:63:be:e3:ff:ff -j ACCEPT
 
 # 002
-# obsolete rule for first setup
+# obsolete rule, for first setup only
 #-A FORWARD -m mac --mac-source 50:f5:da:0c:ff:ff -j ACCEPT
 
 COMMIT
